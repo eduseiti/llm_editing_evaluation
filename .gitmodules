@@ -1,3 +1,4 @@
 [submodule "rome"]
 	path = rome
 	url = git@github.com:eduseiti/rome.git
+	branch = add_new_models
