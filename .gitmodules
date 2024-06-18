@@ -1,0 +1,3 @@
+[submodule "rome"]
+	path = rome
+	url = git@github.com:eduseiti/rome.git
