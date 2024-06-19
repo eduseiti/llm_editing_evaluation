@@ -33,12 +33,41 @@ FACTUAL_ASSOCIATIONS_EXTRACTION_PROMPT=(
 FACTUAL_ASSOCIATIONS_EXTRACTION_TEXT_TEMPLATE="\n\nText: \"{}\""
 
 
+
+#
+# Prompt for simple factual association extraction from a given text
+#
+
+SIMPLE_FACTUAL_ASSOCIATIONS_EXTRACTION_SYSTEM=(
+    "You read a text and break it down in a sequence of factual associations sentences."
+)
+
+SIMPLE_FACTUAL_ASSOCIATIONS_EXTRACTION_PROMPT=(
+    "Read the text and return a list of all simple factual associations you "
+    "can extract exclusively from it. Write independent sentences also including "
+    "the implicit and temporal information. Break down the information in "
+    "sentences containing a single object. For each factual association, identify "
+    "the subject, the relation and the object. Only output the JSON format, "
+    "nothing else before or after: "
+    "{\"sentences\":[{\"subject\":\"<subject-1>\", "
+                     "\"relation\":\"<relation-1>\", "
+                     "\"object\":\"<object-1>\"}, ..., "
+                    "{\"subject\":\"<subject-n>\", "
+                     "\"relation\":\"<relation-n>\", "
+                     "\"object\":\"<object-n>\"}]}"
+)
+
+SIMPLE_FACTUAL_ASSOCIATIONS_EXTRACTION_TEXT_TEMPLATE="\n\nText: \"{}\""
+
+
+
 #
 # Prompt for questions generation from a given text
 #
 
 QUESTIONS_GENERATION_SYSTEM=(
-    "You read a text, break it down in a sequence of factual associations sentences and generate questions about them."
+    "You read a text, break it down in a sequence of factual "
+    "associations sentences and generate questions about them."
 )
 
 QUESTIONS_GENERATION_PROMPT=(
@@ -57,6 +86,26 @@ QUESTIONS_GENERATION_PROMPT=(
 )
 
 QUESTIONS_GENERATION_TEXT_TEMPLATE="\n\nText: \"{}\""
+
+
+
+#
+# Prompt for questions generation from a given factual statement
+#
+
+QUESTIONS_GENERATION_FROM_STATEMENT_PROMPT=(
+    "Generate questions from the simple factual statement. "
+    "Do not repeat the question only changing few words. "
+    "Only output the JSON format,  nothing else: "
+    "{\"questions\":[{\"question:\": \"<question-1>\", "
+                     "\"answer\": \"<answer-1>\"}, ..., "
+                    "{\"question\": \"<question-n>\", "
+                     "\"answer\": \"<answer-n>\"}]}"
+)
+
+QUESTIONS_GENERATION_FROM_STATEMENT_TEMPLATE=(
+    "\n\nStatement: \"{}\""
+)
 
 
 
@@ -175,6 +224,35 @@ def factual_association_extraction(LLM_access: groq_access,
 
 
 #
+# Function to execute simple factual association extraction from a given text
+#
+
+def simple_factual_association_extraction(LLM_access: groq_access, 
+                                          which_text: str, 
+                                          verbose=True):
+    
+    messages = [format_message("system", SIMPLE_FACTUAL_ASSOCIATIONS_EXTRACTION_SYSTEM)]
+
+    user_message = SIMPLE_FACTUAL_ASSOCIATIONS_EXTRACTION_PROMPT + \
+                   SIMPLE_FACTUAL_ASSOCIATIONS_EXTRACTION_TEXT_TEMPLATE.format(which_text)
+    
+    if verbose:
+        print("\n{}".format(user_message))
+
+    messages.append(format_message("user", user_message))
+    
+    print(messages)
+
+    result = LLM_access.send_request(messages)
+
+    if verbose:
+        print("\n{}".format(result))
+    
+    return result
+
+
+
+#
 # Function to execute questions generation from a given text
 #
 
@@ -195,6 +273,29 @@ def questions_generation(LLM_access: groq_access,
     print(messages)
 
     result = LLM_access.send_request(messages)
+
+    if verbose:
+        print("\n{}".format(result))
+    
+    return result
+
+
+
+#
+# Function to execute questions generation from a given statement
+#
+
+def questions_generation_from_statement(LLM_access: groq_access, 
+                                        which_statement: str, 
+                                        verbose=True):
+    
+    user_message = QUESTIONS_GENERATION_FROM_STATEMENT_PROMPT + \
+                   QUESTIONS_GENERATION_FROM_STATEMENT_TEMPLATE.format(which_statement)
+    
+    if verbose:
+        print("\n{}".format(user_message))
+
+    result = LLM_access.send_request([format_message("user", user_message)])
 
     if verbose:
         print("\n{}".format(result))
