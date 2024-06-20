@@ -45,10 +45,10 @@ SIMPLE_FACTUAL_ASSOCIATIONS_EXTRACTION_SYSTEM=(
 SIMPLE_FACTUAL_ASSOCIATIONS_EXTRACTION_PROMPT=(
     "Read the text and return a list of all simple factual associations you "
     "can extract exclusively from it. Write independent sentences also including "
-    "the implicit and temporal information. Break down the information in "
-    "sentences containing a single object. For each factual association, identify "
-    "the subject, the relation and the object. Only output the JSON format, "
-    "nothing else before or after: "
+    "the implicit and temporal information. For each factual association, "
+    "identify the subject, the relation and the object. Break down the information "
+    "in sentences containing a simple object; do not create sentences with "
+    "long objects. Only output the JSON format, nothing else before or after: "
     "{\"sentences\":[{\"subject\":\"<subject-1>\", "
                      "\"relation\":\"<relation-1>\", "
                      "\"object\":\"<object-1>\"}, ..., "
@@ -95,8 +95,8 @@ QUESTIONS_GENERATION_TEXT_TEMPLATE="\n\nText: \"{}\""
 
 QUESTIONS_GENERATION_FROM_STATEMENT_PROMPT=(
     "Generate questions from the simple factual statement. "
-    "Do not repeat the question only changing few words. "
-    "Only output the JSON format,  nothing else: "
+    "Do not create a generic question. "
+    "Only output the JSON format, nothing else: "
     "{\"questions\":[{\"question:\": \"<question-1>\", "
                      "\"answer\": \"<answer-1>\"}, ..., "
                     "{\"question\": \"<question-n>\", "
@@ -105,6 +105,47 @@ QUESTIONS_GENERATION_FROM_STATEMENT_PROMPT=(
 
 QUESTIONS_GENERATION_FROM_STATEMENT_TEMPLATE=(
     "\n\nStatement: \"{}\""
+)
+
+
+
+#
+# Prompt for answers evaluation
+#
+
+ANSWERS_EVALUATION_SYSTEM=(
+    "You evaluate a list of answers, taking a (question, answer) "
+    "pair as reference."
+)
+
+ANSWERS_EVALUATION_PROMPT=(
+    "Provide a score for the list of candidate answers, "
+    "considering a pair of (reference_question, reference_answer), "
+    "according to the following procedure:"
+
+    "\n1. Start with score 3;"
+
+    "\n2. If the candidate answer only partially matches the "
+         "reference answer information, decrement 1 point;"
+
+    "\n3. If the candidate answer includes information not present "
+         "in the reference question, decrement 1 point;"
+    
+    "\n4. If the candidate answer end in an incomplete sentence, "
+         "decrement 1 point;"
+
+    "\n5. If the candidate answer refers to a different entity "
+         "from reference question, attribute score 0."
+    
+    "\n\nProvide your answer only in JSON, nothing else: "
+    "{\"reason\":\"<your-reasoning-for-the-score>\", "
+     "\"score\":\"<answer-score>\"}."
+)
+
+ANSWERS_EVALUATION_TEMPLATE=(
+    "\n\nreference_question: \"{}\""
+        "reference_answer: \"{}\""
+        "\ncandidate answer: \"{}\""
 )
 
 
@@ -296,6 +337,38 @@ def questions_generation_from_statement(LLM_access: groq_access,
         print("\n{}".format(user_message))
 
     result = LLM_access.send_request([format_message("user", user_message)])
+
+    if verbose:
+        print("\n{}".format(result))
+    
+    return result
+
+
+
+#
+# Function to execute answer evaluation
+#
+
+def answer_evaluation(LLM_access: groq_access, 
+                      which_reference: str, 
+                      which_candidate: str,
+                      verbose=True):
+    
+    messages = [format_message("system", ANSWERS_EVALUATION_SYSTEM)]
+
+    user_message = ANSWERS_EVALUATION_PROMPT + \
+                   ANSWERS_EVALUATION_TEMPLATE.format(which_reference['question'],
+                                                      which_reference['answer'], 
+                                                      which_candidate)
+    
+    if verbose:
+        print("\n{}".format(user_message))
+
+    messages.append(format_message("user", user_message))
+    
+    print(messages)
+
+    result = LLM_access.send_request(messages)
 
     if verbose:
         print("\n{}".format(result))
