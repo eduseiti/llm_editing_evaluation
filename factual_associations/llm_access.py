@@ -5,6 +5,7 @@ import json
 
 
 GROQ_LLAMA3_70B_MODEL="llama3-70b-8192"
+GROQ_LLAMA3_8B_MODEL="llama3-8b-8192"
 
 
 #
@@ -151,6 +152,32 @@ ANSWERS_EVALUATION_TEMPLATE=(
 
 
 #
+# Prompt for RAG
+#
+
+RAG_SYSTEM=(
+    "You read passages and answer to a question based only on "
+    "the information you got from the passages."
+)
+
+RAG_ZERO_SHOT_PROMPT=(
+    "Read the passages below and answer to the question, considering "
+    "only the information from the passages. Indicate if there is no "
+    "answer, answering \"Not enough information\". Provide your answer "
+    "in JSON, nothing else: "
+    "{\"reasoning\": \"<which-information-in-which-passage-led-to-your-answer>\", "
+     "\"answer\": \"<your-answer>\"}"
+)
+
+RAG_PASSAGE_TEMPLATE=(
+    "\nPassage {}: \"{}\""
+)
+
+RAG_QUESTION_TEMPLATE="\nQuestion: \"{}\""
+
+
+
+#
 # Class defining the access to Groq models.
 #
 
@@ -164,7 +191,7 @@ class groq_access:
         self.client = Groq(api_key=api_key)
         
 
-    def send_request(self, messages):
+    def send_request(self, messages, temperature=0):
         
         completed_request = False
 
@@ -172,7 +199,7 @@ class groq_access:
             try:
                 completion = self.client.chat.completions.create(model=self.model,
                                                                  messages=messages,
-                                                                 temperature=0,
+                                                                 temperature=temperature,
                                                                  max_tokens=2048,
                                                                  top_p=1,
                                                                  stream=True,
@@ -190,16 +217,20 @@ class groq_access:
                 else:
                     try:
                         # Basic output cleanup
-                        print("\n\n")
+                        print("\n\n---------------------")
                         print(generated_text)
-                        print("\n\n")
+                        print("---------------------\n\n")
 
                         cleaned_text = generated_text.replace("\n", "")
-                        cleaned_text = cleaned_text[:cleaned_text.rfind("}") + 1]
 
-                        # print("\n\n")
-                        # print(cleaned_text)
-                        # print("\n\n")
+                        if cleaned_text.rfind("}") > 0:
+                            cleaned_text = cleaned_text[:cleaned_text.rfind("}") + 1]
+                        else:
+                            cleaned_text += "}"
+
+                        print("\n\n---------------------")
+                        print(cleaned_text)
+                        print("---------------------\n\n")
                         
                         response = json.loads(cleaned_text)
                     except Exception as e:
@@ -374,3 +405,40 @@ def answer_evaluation(LLM_access: groq_access,
         print("\n{}".format(result))
     
     return result
+
+
+
+#
+# Function to execute RAG
+#
+
+def execute_RAG(LLM_access: groq_access, 
+                which_reference_passages, 
+                which_question: str,
+                temperature=0,
+                verbose=True):
+    
+    system_role = [format_message("system", RAG_SYSTEM)]
+
+    reference_passages_message = ""
+
+    if (which_reference_passages is not None) and (len(which_reference_passages) > 0):
+        for i, passage_text in enumerate(which_reference_passages):
+            reference_passages_message += RAG_PASSAGE_TEMPLATE.format(i, passage_text)
+
+    user_message = RAG_ZERO_SHOT_PROMPT + \
+                   reference_passages_message + \
+                   RAG_QUESTION_TEMPLATE.format(which_question)
+
+    if verbose:
+        print(user_message)
+
+    evaluation = LLM_access.send_request(system_role + [format_message("user", user_message)],
+                                         temperature=temperature)
+
+    evaluation['question'] = which_question
+
+    if verbose:
+        print("{}\n".format(evaluation))
+
+    return evaluation
