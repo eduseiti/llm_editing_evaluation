@@ -120,23 +120,26 @@ ANSWERS_EVALUATION_SYSTEM=(
 )
 
 ANSWERS_EVALUATION_PROMPT=(
-    "Provide a score for the list of candidate answers, "
+    "Provide a score from 0 to 3 for the list of candidate answers, "
     "considering a pair of (reference_question, reference_answer), "
     "according to the following procedure:"
-
+    
     "\n1. Start with score 3;"
 
-    "\n2. If the candidate answer only partially matches the "
-         "reference answer information, decrement 1 point;"
+    "\n2. If the candidate answer does not include any information "
+         "in the reference_answer, attribute score 0."
 
-    "\n3. If the candidate answer includes information not present "
+    "\n3. If the candidate answer only partially includes the "
+         "reference_answer information, decrement 1 point;"
+    
+    "\n4. If the candidate answer includes information not present "
          "in the reference question, decrement 1 point;"
     
-    "\n4. If the candidate answer end in an incomplete sentence, "
+    "\n5. If the candidate answer end in an incomplete sentence, "
          "decrement 1 point;"
-
-    "\n5. If the candidate answer refers to a different entity "
-         "from reference question, attribute score 0."
+    
+    "\n6. If the candidate answer refers to a different entity "
+         "from reference_question, attribute score 0."
     
     "\n\nProvide your answer only in JSON, nothing else: "
     "{\"reason\":\"<your-reasoning-for-the-score>\", "
