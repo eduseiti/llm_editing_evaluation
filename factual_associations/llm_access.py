@@ -181,6 +181,61 @@ RAG_QUESTION_TEMPLATE="\nQuestion: \"{}\""
 
 
 #
+# 3-step factual association extraction
+#
+
+FACTUAL_ASSOCIATIONS_3_STEP_EXTRACT_SYSTEM=(
+    "You read a text and break it down in a sequence of factual "
+    "associations sentences."    
+)
+
+FACTUAL_ASSOCIATIONS_3_STEP_EXTRACT_PROMPT=(
+    "Read the text and return a list of all factual associations you can "
+    "extract only from the text information. Write independent and complete "
+    "sentences; repeat the main subject to avoid pronouns.\n\nOnly output the "
+    "JSON format, nothing else: {\"comments\": \"<any-comment>\", "
+                                "\"sentences\": [\"<sentence-1>\", ..., "
+                                                "\"<sentence-n>\"]}"
+)
+
+FACTUAL_ASSOCIATIONS_3_STEP_EXTRACT_TEMPLATE=(
+    "\n\nText: \"{}\""
+)
+
+FACTUAL_ASSOCIATIONS_3_STEP_SPLIT_PROMPT=(
+    "Break each sentence in \"subject\", \"relation\" and \"object\":"
+    "\n1. Identify the \"subject\" of the relation;"
+    "\n2. Identify the minimal \"object\" of the relation, including up to "
+    "the last 3 words of the original sentence;"
+    "\n3. Include in the \"relation\" every word between the \"subject\" "
+    "and \"object\".\n4. Don't create a \"relation\" with only verb."
+
+    "\n\nOnly output the JSON format, nothing else before or after: "
+    "{\"sentences\":[{\"subject\":\"<subject-1>\", "
+                     "\"relation\":\"<relation-1>\", "
+                     "\"object\":\"<object-1>\"}, ..., "
+                    "{\"subject\":\"<subject-n>\", "
+                     "\"relation\":\"<relation-n>\", "
+                     "\"object\":\"<object-n>\"}]}"
+    "\n\nSentences:\n" 
+)
+
+FACTUAL_ASSOCIATIONS_3_STEP_SPLIT_TEMPLATE=(
+    "\"{}\"\n"
+)
+
+FACTUAL_ASSOCIATIONS_3_STEP_REWRITE_PROMPT_TEMPLATE=(
+    "Rewrite the sentence keeping the exact same meaning, without changing "
+    "the \"subject\".\nOnly output the JSON format, nothing else before or "
+    "after: {{\"sentence\": {{\"subject\":\"<new-subject>\", "
+                             "\"relation\":\"<new-relation>\", "
+                             "\"object\":\"<new-object>\"}}"
+    "\n\nSentence:\n{}" 
+)
+
+
+
+#
 # Class defining the access to Groq models.
 #
 
@@ -445,3 +500,81 @@ def execute_RAG(LLM_access: groq_access,
         print("{}\n".format(evaluation))
 
     return evaluation
+
+
+
+#
+# 3-step factual association extraction 
+#
+
+def factual_association_3_step_extraction(LLM_access: groq_access, 
+                                          which_text: str, 
+                                          verbose=True):
+
+    # Extract the factual association complete sentences
+
+    messages = [format_message("system", FACTUAL_ASSOCIATIONS_3_STEP_EXTRACT_SYSTEM)]
+
+    user_message = FACTUAL_ASSOCIATIONS_3_STEP_EXTRACT_PROMPT + \
+                   FACTUAL_ASSOCIATIONS_3_STEP_EXTRACT_TEMPLATE.format(which_text)
+    
+    if verbose:
+        print("\n{}".format(user_message))
+
+    messages.append(format_message("user", user_message))
+    
+    if verbose:
+        print(messages)
+
+    extraction_result = LLM_access.send_request(messages)
+
+    if verbose:
+        print("\n{}".format(extraction_result))
+
+
+    # Break the sentences in "subject", "relation", and "object".
+
+    extracted_sentences = ""
+
+    for sentence in extraction_result['sentences']:
+        extracted_sentences += FACTUAL_ASSOCIATIONS_3_STEP_SPLIT_TEMPLATE.format(sentence)
+
+    user_message = FACTUAL_ASSOCIATIONS_3_STEP_SPLIT_PROMPT + extracted_sentences
+
+    if verbose:
+        print("\n{}".format(user_message))    
+
+    split_result = LLM_access.send_request([format_message("user", user_message)])
+
+    if verbose:
+        print("\n{}".format(split_result))
+
+
+    # Check for repeated relations
+
+    extracted_relations = []
+    verified_sentences = []
+    rewrite_results = []
+
+    for sentence in split_result['sentences']:
+        if sentence['relation'].lower() in extracted_relations:
+
+            if verbose:
+                print("Repeated relation: \"{}\"\n{}".format(sentence['relation'].lower(), 
+                                                             sentence))
+
+            user_message = [format_message("user", 
+                                           FACTUAL_ASSOCIATIONS_3_STEP_REWRITE_PROMPT_TEMPLATE.format(sentence))]
+
+            rewrite_result = LLM_access.send_request(user_message)
+            verified_sentences.append(rewrite_result['sentence'])
+
+            rewrite_results.append(rewrite_result)
+        else:
+            extracted_relations.append(sentence['relation'].lower())
+            verified_sentences.append(sentence)
+
+    return {"sentences": verified_sentences,
+            "extraction_result": extraction_result,
+            "split_result": split_result,
+            "rewrite_results": rewrite_results}
