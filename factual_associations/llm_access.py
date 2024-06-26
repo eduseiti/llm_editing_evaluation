@@ -120,26 +120,28 @@ ANSWERS_EVALUATION_SYSTEM=(
 )
 
 ANSWERS_EVALUATION_PROMPT=(
-    "Provide a score from 0 to 3 for the list of candidate answers, "
-    "considering a pair of (reference_question, reference_answer), "
-    "according to the following procedure:"
+    "Provide a score from 0 to 3 for a candidate_answer, considering "
+    "a pair of (reference_question, reference_answer), according to "
+    "the following procedure:"
     
     "\n1. Start with score 3;"
 
-    "\n2. If the candidate answer does not include any information "
+    "\n2. If the candidate_answer does not include any information "
          "in the reference_answer, attribute score 0."
 
-    "\n3. If the candidate answer only partially includes the "
+    "\n3. If the candidate_answer does not include the complete "
          "reference_answer information, decrement 1 point;"
     
-    "\n4. If the candidate answer includes information not present "
-         "in the reference question, decrement 1 point;"
+    "\n4. If the candidate_answer includes information not verifiable "
+         "by the reference_question, decrement 1 point;"
     
-    "\n5. If the candidate answer end in an incomplete sentence, "
+    "\n5. If the candidate_answer end in an incomplete sentence, "
          "decrement 1 point;"
     
-    "\n6. If the candidate answer refers to a different entity "
-         "from reference_question, attribute score 0."
+    "\n6. If the candidate_answer refers to a different entity or "
+         "subject from reference_question, attribute score 0."
+
+    "\n7. If for any reason you cannot evaluate, attribute score 0."
     
     "\n\nProvide your answer only in JSON, nothing else: "
     "{\"reason\":\"<your-reasoning-for-the-score>\", "
@@ -148,8 +150,8 @@ ANSWERS_EVALUATION_PROMPT=(
 
 ANSWERS_EVALUATION_TEMPLATE=(
     "\n\nreference_question: \"{}\""
-        "reference_answer: \"{}\""
-        "\ncandidate answer: \"{}\""
+      "\nreference_answer: \"{}\""
+      "\ncandidate_answer: \"{}\""
 )
 
 

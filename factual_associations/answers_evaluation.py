@@ -4,6 +4,8 @@ import time
 
 from llm_access import *
 
+import re
+
 
 
 #
@@ -39,6 +41,11 @@ def evaluate_questions(groq_interface,
         question_evaluations = []
 
         for answer in question['answers']:
+
+            # clean up the answer from unwanted characters which breaks the prompt
+
+            answer = re.sub("(\",)|\"|\'", " ", answer)
+
             score = answer_evaluation(groq_interface, 
                                       question['question'],
                                       answer)
