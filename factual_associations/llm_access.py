@@ -206,9 +206,12 @@ FACTUAL_ASSOCIATIONS_3_STEP_EXTRACT_TEMPLATE=(
 
 FACTUAL_ASSOCIATIONS_3_STEP_SPLIT_PROMPT=(
     "Break each sentence in \"subject\", \"relation\" and \"object\":"
+    
     "\n1. Identify the \"subject\" of the relation;"
+    
     "\n2. Identify the minimal \"object\" of the relation, including up to "
     "the last 3 words of the original sentence;"
+    
     "\n3. Include in the \"relation\" every word between the \"subject\" "
     "and \"object\".\n4. Don't create a \"relation\" with only verb."
 
@@ -228,7 +231,9 @@ FACTUAL_ASSOCIATIONS_3_STEP_SPLIT_TEMPLATE=(
 
 FACTUAL_ASSOCIATIONS_3_STEP_REWRITE_PROMPT_TEMPLATE=(
     "Rewrite the sentence keeping the exact same meaning, without changing "
-    "the \"subject\".\nOnly output the JSON format, nothing else before or "
+    "the \"subject\"."
+    
+    "\nOnly output the JSON format, nothing else before or "
     "after: {{\"sentence\": {{\"subject\":\"<new-subject>\", "
                              "\"relation\":\"<new-relation>\", "
                              "\"object\":\"<new-object>\"}}"
